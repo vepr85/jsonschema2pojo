@@ -131,6 +131,14 @@ public class RuleFactory {
     public Rule<JDefinedClass, JDefinedClass> getRequiredArrayRule() { return new RequiredArrayRule(this); }
 
     /**
+     * Provides a rule instance that should be applied when a "features"
+     * declaration is found in the schema.
+     *
+     * @return a schema rule that can handle the "required" declaration.
+     */
+    public Rule<JDefinedClass, JDefinedClass> getFeaturesIgnoreArrayRule() { return new FeaturesIgnoreArrayRule(this); }
+
+    /**
      * Provides a rule instance that should be applied when a "properties"
      * declaration is found in the schema.
      * 

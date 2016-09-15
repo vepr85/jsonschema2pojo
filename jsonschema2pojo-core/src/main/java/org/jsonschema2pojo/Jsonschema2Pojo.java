@@ -1,12 +1,12 @@
 /**
  * Copyright © 2010-2014 Nokia
- *
+ * <p/>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p/>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p/>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,12 +16,19 @@
 
 package org.jsonschema2pojo;
 
-import static org.apache.commons.lang3.StringUtils.*;
+import com.sun.codemodel.CodeWriter;
+import com.sun.codemodel.JCodeModel;
+import org.apache.commons.io.FilenameUtils;
+import org.jsonschema2pojo.exception.GenerationException;
+import org.jsonschema2pojo.rules.RuleFactory;
+import org.jsonschema2pojo.util.NameHelper;
+import org.jsonschema2pojo.util.URLUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.util.Arrays;
@@ -29,14 +36,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.commons.io.FilenameUtils;
-import org.jsonschema2pojo.exception.GenerationException;
-import org.jsonschema2pojo.rules.RuleFactory;
-import org.jsonschema2pojo.util.NameHelper;
-import org.jsonschema2pojo.util.URLUtil;
-
-import com.sun.codemodel.CodeWriter;
-import com.sun.codemodel.JCodeModel;
+import static org.apache.commons.lang3.StringUtils.*;
 
 public class Jsonschema2Pojo {
     /**
@@ -66,7 +66,7 @@ public class Jsonschema2Pojo {
             removeOldOutput(config.getTargetDirectory());
         }
 
-        for (Iterator<URL> sources = config.getSource(); sources.hasNext();) {
+        for (Iterator<URL> sources = config.getSource(); sources.hasNext(); ) {
             URL source = sources.next();
 
             if (URLUtil.parseProtocol(source.toString()) == URLProtocol.FILE && URLUtil.getFileFromURL(source).isDirectory()) {
@@ -106,11 +106,20 @@ public class Jsonschema2Pojo {
 
         for (File child : schemaFiles) {
             if (child.isFile()) {
-                mapper.generate(codeModel, getNodeName(child.toURI().toURL(), config), defaultString(packageName), child.toURI().toURL());
+                String innerPackage = getSubPackageNameFromSchemaId(child.toURI().toURL(), mapper);
+                mapper.generate(codeModel, getNodeName(child.toURI().toURL(), config), defaultString(packageName + innerPackage), child.toURI().toURL());
             } else {
                 generateRecursive(config, mapper, codeModel, childQualifiedName(packageName, child.getName()), Arrays.asList(child.listFiles(config.getFileFilter())));
             }
         }
+    }
+
+    private static String getSubPackageNameFromSchemaId(URL url, SchemaMapper mapper) throws MalformedURLException {
+
+        Schema schema = mapper.getSchemaFromUrl(url);
+        String schemaId = schema.getContent().get("id").asText().toLowerCase();
+        String resultPackage = URLUtil.splitFileNameToPackages(schemaId);
+        return "." + resultPackage;
     }
 
     private static String childQualifiedName(String parentQualifiedName, String childSimpleName) {

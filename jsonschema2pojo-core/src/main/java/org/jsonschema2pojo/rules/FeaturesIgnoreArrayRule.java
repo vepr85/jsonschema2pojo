@@ -18,6 +18,7 @@ package org.jsonschema2pojo.rules;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.codemodel.*;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.jsonschema2pojo.Schema;
 
 import javax.validation.constraints.NotNull;
@@ -26,37 +27,37 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Applies the "required" JSON schema rule.
- *
- * @see <a
- * href="http://tools.ietf.org/html/draft-fge-json-schema-validation-00#section-5.4.3">http://tools.ietf.org/html/draft-fge-json-schema-validation-00#section-5.4.3</a>
+ * Applies JsonIgnored json schema rule
+ * Created by abyakimenko on 15.09.2016.
  */
-public class RequiredArrayRule implements Rule<JDefinedClass, JDefinedClass> {
+public class FeaturesIgnoreArrayRule implements Rule<JDefinedClass, JDefinedClass> {
 
     private final RuleFactory ruleFactory;
 
-    public static final String REQUIRED_COMMENT_TEXT = "\n(Required)";
+    public static final String JSON_IGNORED_COMMENT_TEXT = "\n(JsonIgnore)";
 
-    protected RequiredArrayRule(RuleFactory ruleFactory) {
+    protected FeaturesIgnoreArrayRule(RuleFactory ruleFactory) {
         this.ruleFactory = ruleFactory;
     }
 
     @Override
     public JDefinedClass apply(String nodeName, JsonNode node, JDefinedClass jclass, Schema schema) {
-        List<String> requiredFieldMethods = new ArrayList<>();
 
+        List<String> jsonIgnoredFieldMethods = new ArrayList<>();
         JsonNode properties = schema.getContent().get("properties");
 
         for (Iterator<JsonNode> iterator = node.elements(); iterator.hasNext(); ) {
-            String requiredArrayItem = iterator.next().asText();
+
+            JsonNode jsonIgnoreField = iterator.next();
+            String ignoreArrayItem = jsonIgnoreField.fieldNames().next();
 
             JsonNode propertyNode = null;
 
             if (properties != null) {
-                propertyNode = properties.findValue(requiredArrayItem);
+                propertyNode = properties.findValue(ignoreArrayItem);
             }
 
-            String fieldName = ruleFactory.getNameHelper().getPropertyName(requiredArrayItem, propertyNode);
+            String fieldName = ruleFactory.getNameHelper().getPropertyName(ignoreArrayItem, propertyNode);
             JFieldVar field = jclass.fields().get(fieldName);
 
             if (field == null) {
@@ -65,36 +66,30 @@ public class RequiredArrayRule implements Rule<JDefinedClass, JDefinedClass> {
 
             addJavaDoc(field);
 
+            field.annotate(JsonIgnore.class);
+            //field.annotations().remove(JsonProperty.class);
+            // в зависимотсти от содержимого схемы отработать с геттерами и сеттерами, поставив им соответствующую
+            // аннотацию @JsonIgnore
+//
             if (ruleFactory.getGenerationConfig().isIncludeJsr303Annotations()) {
-                addNotNullAnnotation(field);
+
             }
-
-            requiredFieldMethods.add(getGetterName(fieldName, field.type(), node));
-            requiredFieldMethods.add(getSetterName(fieldName, node));
+//            String gg = "";
+//
+//            jsonIgnoredFieldMethods.add(getGetterName(fieldName, field.type(), node));
+//            jsonIgnoredFieldMethods.add(getSetterName(fieldName, node));
         }
-
-        updateGetterSetterJavaDoc(jclass, requiredFieldMethods);
 
         return jclass;
     }
 
-    private void updateGetterSetterJavaDoc(JDefinedClass jclass, List<String> requiredFieldMethods) {
-        for (Iterator<JMethod> methods = jclass.methods().iterator(); methods.hasNext();) {
-            JMethod method = methods.next();
-            if (requiredFieldMethods.contains(method.name())) {
-                addJavaDoc(method);
-            }
-        }
+    private void addJavaDoc(JDocCommentable docCommentable) {
+        JDocComment javadoc = docCommentable.javadoc();
+        javadoc.append(JSON_IGNORED_COMMENT_TEXT);
     }
 
     private void addNotNullAnnotation(JFieldVar field) {
         field.annotate(NotNull.class);
-    }
-
-
-    private void addJavaDoc(JDocCommentable docCommentable) {
-        JDocComment javadoc = docCommentable.javadoc();
-        javadoc.append(REQUIRED_COMMENT_TEXT);
     }
 
     private String getSetterName(String propertyName, JsonNode node) {

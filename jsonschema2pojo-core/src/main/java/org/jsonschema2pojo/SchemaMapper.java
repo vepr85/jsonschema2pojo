@@ -16,12 +16,6 @@
 
 package org.jsonschema2pojo;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URL;
-
-import org.jsonschema2pojo.rules.RuleFactory;
-
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,6 +25,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.codemodel.JCodeModel;
 import com.sun.codemodel.JPackage;
 import com.sun.codemodel.JType;
+import org.jsonschema2pojo.rules.RuleFactory;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
 
 /**
  * Generates Java types from a JSON schema. Can accept a factory which will be
@@ -93,6 +92,15 @@ public class SchemaMapper {
 
     }
 
+    public Schema getSchemaFromUrl(URL schemaUrl){
+
+        ObjectNode schemaNode = readSchema(schemaUrl);
+        Schema schema = new Schema(null, schemaNode, schemaNode);
+        schema = ruleFactory.getSchemaStore().create(schema, schemaNode.get("$ref").asText());
+
+        return schema;
+    }
+
     private ObjectNode readSchema(URL schemaUrl) {
 
         switch (ruleFactory.getGenerationConfig().getSourceType()) {
@@ -123,7 +131,7 @@ public class SchemaMapper {
 
         JPackage jpackage = codeModel._package(packageName);
 
-        JsonNode schemaNode = null;
+        JsonNode schemaNode;
         if (ruleFactory.getGenerationConfig().getSourceType() == SourceType.JSON) {
             JsonNode jsonNode = objectMapper().readTree(json);
             schemaNode = schemaGenerator.schemaFromExample(jsonNode);
